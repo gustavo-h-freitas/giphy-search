@@ -1,12 +1,11 @@
 <script setup>
 import CardsGif from './components/Cards/CardsGif.vue'
 
-import { ref, useTemplateRef } from 'vue'
+import { ref } from 'vue'
 import { useGetGifs } from './composables/useGetGifs'
 
 let timeout = null
 
-const scrollTarget = useTemplateRef('scrollTarget')
 const pagination = ref(0)
 const filter = ref('')
 const gifs = ref([])
