@@ -1,34 +1,33 @@
 <script setup>
 import CardsGif from './components/Cards/CardsGif.vue'
 
-import axios from 'axios'
-import { onMounted, onUnmounted, ref, useTemplateRef } from 'vue'
+import { ref, useTemplateRef } from 'vue'
+import { useGetGifs } from './composables/useGetGifs'
 
 let timeout = null
 
 const scrollTarget = useTemplateRef('scrollTarget')
-const observer = ref(null)
 const pagination = ref(0)
 const filter = ref('')
 const gifs = ref([])
 
 const getGifs = async (isFiltering) => {
-  const query = new URLSearchParams()
-  query.append('q', filter.value)
-  query.append('api_key', import.meta.env.VITE_API_KEY)
-  query.append('offset', pagination.value * 50)
+  try {
+    const { data } = await useGetGifs(filter.value, pagination.value)
 
-  const { data } = await axios.get(`https://api.giphy.com/v1/gifs/search?${query}`)
+    if (isFiltering) {
+      return (gifs.value = data.data)
+    }
 
-  if (isFiltering) {
-    return (gifs.value = data.data)
+    gifs.value.push(...data.data)
+  } catch {
+    new Error().stack
   }
-
-  gifs.value.push(...data.data)
 }
 
 const clearGifs = () => {
   gifs.value = []
+  filter.value = ''
 }
 
 const debounceSearch = () => {
@@ -41,26 +40,13 @@ const debounceSearch = () => {
 }
 
 const setupObserver = () => {
-  observer.value = new IntersectionObserver(([entry]) => {
-    console.log(entry, scrollTarget.value)
-    if (entry.isIntersecting && !!gifs.value.length) {
-      pagination.value = pagination.value + 1
-      getGifs(false)
-    }
-  })
-
-  if (scrollTarget.value) {
-    observer.value.observe(scrollTarget.value)
+  if (!gifs.value.length) {
+    return
   }
+
+  pagination.value = pagination.value + 1
+  getGifs(false)
 }
-
-onMounted(() => {
-  setupObserver()
-})
-
-onUnmounted(() => {
-  observer.value.unobserve(scrollTarget.value)
-})
 </script>
 
 <template>
@@ -77,7 +63,7 @@ onUnmounted(() => {
       :gif-url="gif.images.preview_gif.url"
     />
 
-    <div ref="scrollTarget" />
+    <div ref="scrollTarget" v-on-show="setupObserver" />
   </section>
 </template>
 
@@ -105,7 +91,10 @@ onUnmounted(() => {
   background-color: #6671bd;
   color: white;
   border-radius: 6px;
-  padding: 4px 12px;
+  padding: 8px 16px;
+  font-weight: 500;
+  border: none;
+  cursor: pointer;
 }
 
 .filter-wrapper > input {
